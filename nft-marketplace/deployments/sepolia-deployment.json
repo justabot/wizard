@@ -1,0 +1,18 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contractAddress": "0xe2A26Fd3B34555984807925503443aa3e3198397",
+  "deployer": "0x07e046266fA6221Ed843FD30cF3A15Ff47c102fB",
+  "authorizedSigner": "0x07e046266fA6221Ed843FD30cF3A15Ff47c102fB",
+  "contractName": "LazyMint Testnet Collection",
+  "contractSymbol": "LMTC",
+  "payees": [
+    "0xbcCDF9Db6710F04Dfb53621CA430424486bddac7",
+    "0x01662d851ad095C2f5E308E212568806EA8A5887",
+    "0x08D17700614FFDCFd00875C4115A956BC93DB4e2"
+  ],
+  "shares": [50, 30, 20],
+  "deployedAt": "2024-12-24T00:00:00.000Z",
+  "transactionHash": "0x152a8bb6b5f5dc59f6d34bb300284158664913b4c7616df94d0159067c114f5f",
+  "status": "deployed"
+} 

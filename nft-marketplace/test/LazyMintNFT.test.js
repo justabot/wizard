@@ -306,6 +306,280 @@ describe("LazyMintNFT", function () {
     });
   });
 
+  describe("Batch Operations", function () {
+    async function createLazyMintVoucher(tokenId, uri, price, recipientAddr, royaltyFee, royaltyRecipient) {
+      const domain = {
+        name: "LazyMint Collection",
+        version: "1.0.0",
+        chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+        verifyingContract: contractAddress
+      };
+
+      const types = {
+        LazyMintVoucher: [
+          { name: "tokenId", type: "uint256" },
+          { name: "uri", type: "string" },
+          { name: "price", type: "uint256" },
+          { name: "recipient", type: "address" },
+          { name: "royaltyFee", type: "uint96" },
+          { name: "royaltyRecipient", type: "address" }
+        ]
+      };
+
+      const voucher = {
+        tokenId: tokenId,
+        uri: uri,
+        price: price,
+        recipient: recipientAddr,
+        royaltyFee: royaltyFee,
+        royaltyRecipient: royaltyRecipient
+      };
+
+      const signature = await signer._signTypedData(domain, types, voucher);
+      return { ...voucher, signature };
+    }
+
+    it("Should batch mint multiple NFTs successfully", async function () {
+      const vouchers = [];
+      const totalPrice = ethers.utils.parseEther("0.3"); // 3 tokens at 0.1 ETH each
+      
+      // Create 3 vouchers
+      for (let i = 1; i <= 3; i++) {
+        const voucher = await createLazyMintVoucher(
+          i,
+          `${TOKEN_URI}/${i}`,
+          TOKEN_PRICE,
+          recipient.address,
+          ROYALTY_FEE,
+          recipient.address
+        );
+        vouchers.push(voucher);
+      }
+
+      // Batch mint
+      await expect(
+        lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: totalPrice })
+      )
+        .to.emit(lazyMintNFT, "LazyMinted")
+        .withArgs(recipient.address, 1, `${TOKEN_URI}/1`, TOKEN_PRICE)
+        .to.emit(lazyMintNFT, "LazyMinted")
+        .withArgs(recipient.address, 2, `${TOKEN_URI}/2`, TOKEN_PRICE)
+        .to.emit(lazyMintNFT, "LazyMinted")
+        .withArgs(recipient.address, 3, `${TOKEN_URI}/3`, TOKEN_PRICE);
+
+      // Verify all tokens were minted
+      for (let i = 1; i <= 3; i++) {
+        expect(await lazyMintNFT.ownerOf(i)).to.equal(recipient.address);
+        expect(await lazyMintNFT.tokenURI(i)).to.equal(`${TOKEN_URI}/${i}`);
+        expect(await lazyMintNFT.tokenExists(i)).to.be.true;
+      }
+    });
+
+    it("Should distribute payments correctly for batch minting", async function () {
+      const vouchers = [];
+      const batchSize = 3;
+      const totalPrice = TOKEN_PRICE.mul(batchSize);
+      
+      // Create vouchers with different prices
+      const prices = [
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.parseEther("0.2"),
+        ethers.utils.parseEther("0.3")
+      ];
+      
+      for (let i = 1; i <= batchSize; i++) {
+        const voucher = await createLazyMintVoucher(
+          i,
+          `${TOKEN_URI}/${i}`,
+          prices[i-1],
+          recipient.address,
+          ROYALTY_FEE,
+          recipient.address
+        );
+        vouchers.push(voucher);
+      }
+
+      const actualTotalPrice = prices.reduce((sum, price) => sum.add(price), ethers.BigNumber.from(0));
+
+      // Record initial balances
+      const payee1InitialBalance = await ethers.provider.getBalance(payee1.address);
+      const payee2InitialBalance = await ethers.provider.getBalance(payee2.address);
+      const payee3InitialBalance = await ethers.provider.getBalance(payee3.address);
+
+      // Batch mint
+      await lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: actualTotalPrice });
+
+      // Check releasable amounts
+      const payee1Releasable = await lazyMintNFT.releasable(payee1.address);
+      const payee2Releasable = await lazyMintNFT.releasable(payee2.address);
+      const payee3Releasable = await lazyMintNFT.releasable(payee3.address);
+
+      // Expected amounts based on shares (50%, 30%, 20%)
+      const expectedPayee1 = actualTotalPrice.mul(50).div(100);
+      const expectedPayee2 = actualTotalPrice.mul(30).div(100);
+      const expectedPayee3 = actualTotalPrice.mul(20).div(100);
+
+      expect(payee1Releasable).to.equal(expectedPayee1);
+      expect(payee2Releasable).to.equal(expectedPayee2);
+      expect(payee3Releasable).to.equal(expectedPayee3);
+    });
+
+    it("Should fail batch mint with insufficient payment", async function () {
+      const vouchers = [];
+      
+      // Create 2 vouchers
+      for (let i = 1; i <= 2; i++) {
+        const voucher = await createLazyMintVoucher(
+          i,
+          `${TOKEN_URI}/${i}`,
+          TOKEN_PRICE,
+          recipient.address,
+          ROYALTY_FEE,
+          recipient.address
+        );
+        vouchers.push(voucher);
+      }
+
+      const insufficientPayment = TOKEN_PRICE; // Only pay for 1 when 2 are needed
+      
+      await expect(
+        lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: insufficientPayment })
+      ).to.be.revertedWith("Insufficient payment for batch");
+    });
+
+    it("Should fail if any signature in batch is invalid", async function () {
+      const vouchers = [];
+      
+      // Create 2 vouchers, but tamper with one signature
+      const voucher1 = await createLazyMintVoucher(
+        1,
+        `${TOKEN_URI}/1`,
+        TOKEN_PRICE,
+        recipient.address,
+        ROYALTY_FEE,
+        recipient.address
+      );
+      
+      // Create second voucher with invalid signature (signed by wrong signer)
+      const domain = {
+        name: "LazyMint Collection",
+        version: "1.0.0",
+        chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+        verifyingContract: contractAddress
+      };
+
+      const types = {
+        LazyMintVoucher: [
+          { name: "tokenId", type: "uint256" },
+          { name: "uri", type: "string" },
+          { name: "price", type: "uint256" },
+          { name: "recipient", type: "address" },
+          { name: "royaltyFee", type: "uint96" },
+          { name: "royaltyRecipient", type: "address" }
+        ]
+      };
+
+      const voucher2Data = {
+        tokenId: 2,
+        uri: `${TOKEN_URI}/2`,
+        price: TOKEN_PRICE,
+        recipient: recipient.address,
+        royaltyFee: ROYALTY_FEE,
+        royaltyRecipient: recipient.address
+      };
+
+      const invalidSignature = await owner._signTypedData(domain, types, voucher2Data);
+      const voucher2 = { ...voucher2Data, signature: invalidSignature };
+
+      vouchers.push(voucher1, voucher2);
+      const totalPrice = TOKEN_PRICE.mul(2);
+
+      await expect(
+        lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: totalPrice })
+      ).to.be.revertedWith("Invalid signature");
+    });
+
+    it("Should fail if any signature in batch is already used", async function () {
+      const voucher = await createLazyMintVoucher(
+        1,
+        TOKEN_URI,
+        TOKEN_PRICE,
+        recipient.address,
+        ROYALTY_FEE,
+        recipient.address
+      );
+
+      // First mint the token individually
+      await lazyMintNFT.connect(buyer).lazyMint(voucher, { value: TOKEN_PRICE });
+
+      // Now try to include the same voucher in a batch
+      const voucher2 = await createLazyMintVoucher(
+        2,
+        `${TOKEN_URI}/2`,
+        TOKEN_PRICE,
+        recipient.address,
+        ROYALTY_FEE,
+        recipient.address
+      );
+
+      const vouchers = [voucher, voucher2]; // Include already used voucher
+      const totalPrice = TOKEN_PRICE.mul(2);
+
+      await expect(
+        lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: totalPrice })
+      ).to.be.revertedWith("Signature already used");
+    });
+
+    it("Should handle batch minting with different royalty settings", async function () {
+      const vouchers = [];
+      
+      // Create vouchers with different royalty settings
+      const voucher1 = await createLazyMintVoucher(
+        1,
+        `${TOKEN_URI}/1`,
+        TOKEN_PRICE,
+        recipient.address,
+        500, // 5%
+        payee1.address
+      );
+      
+      const voucher2 = await createLazyMintVoucher(
+        2,
+        `${TOKEN_URI}/2`,
+        TOKEN_PRICE,
+        recipient.address,
+        1000, // 10%
+        payee2.address
+      );
+
+      vouchers.push(voucher1, voucher2);
+      const totalPrice = TOKEN_PRICE.mul(2);
+
+      // Batch mint
+      await lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: totalPrice });
+
+      // Check individual royalty settings
+      const salePrice = ethers.utils.parseEther("1");
+      
+      const [royaltyRecipient1, royaltyAmount1] = await lazyMintNFT.royaltyInfo(1, salePrice);
+      expect(royaltyRecipient1).to.equal(payee1.address);
+      expect(royaltyAmount1).to.equal(salePrice.mul(500).div(10000));
+
+      const [royaltyRecipient2, royaltyAmount2] = await lazyMintNFT.royaltyInfo(2, salePrice);
+      expect(royaltyRecipient2).to.equal(payee2.address);
+      expect(royaltyAmount2).to.equal(salePrice.mul(1000).div(10000));
+    });
+
+    it("Should handle empty batch array", async function () {
+      const vouchers = [];
+      
+      // Should succeed with empty array (no-op)
+      await expect(
+        lazyMintNFT.connect(buyer).batchLazyMint(vouchers, { value: 0 })
+      ).to.not.be.reverted;
+    });
+  });
+
   describe("Royalty Management", function () {
     it("Should update default royalty settings", async function () {
       const newRecipient = payee1.address;

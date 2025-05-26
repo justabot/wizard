@@ -1,0 +1,219 @@
+# NFT Marketplace Development Rules
+
+## 🔐 Smart Contract Development
+
+### OpenZeppelin Contracts Only
+- **ONLY** use OpenZeppelin contracts that are already created, tested, and audited
+- Never implement custom versions of standard functionality (ERC721, ERC2981, PaymentSplitter, etc.)
+- Always import from `@openzeppelin/contracts` package
+- Use the exact version specified in package.json (v4.9.6) to maintain compatibility
+- Prefer OpenZeppelin's battle-tested implementations over custom solutions
+
+### Required Contract Inheritance Pattern
+```solidity
+// Follow this exact inheritance pattern for NFT contracts
+contract YourNFT is 
+    ERC721URIStorage, 
+    ERC721Royalty, 
+    PaymentSplitter, 
+    Ownable, 
+    ReentrancyGuard
+```
+
+### Constructor Pattern
+```solidity
+// Use this pattern for Ownable initialization (v4.9.6 compatible)
+constructor() ERC721("Name", "SYMBOL") PaymentSplitter(payees, shares) {
+    _transferOwnership(msg.sender); // NOT Ownable(msg.sender)
+}
+```
+
+## 🛡️ Security Requirements
+
+### Mandatory Security Features
+- Always use `ReentrancyGuard` on payable functions
+- Implement EIP712 signature verification for lazy minting
+- Track used signatures to prevent replay attacks
+- Validate payment amounts before processing
+- Use `onlyOwner` modifier for administrative functions
+
+### Signature Verification
+- Use EIP712 typed data signing for all off-chain signatures
+- Never trust signatures without proper verification
+- Always include nonce or unique identifier to prevent replay
+- Validate signer address matches authorized signer
+
+## 📦 Project Structure
+
+### Contract Organization
+- Keep main contract logic in `contracts/` directory
+- Use descriptive contract names (e.g., `LazyMintNFT.sol`)
+- Separate interfaces in `contracts/interfaces/` if needed
+- Keep deployment scripts in `scripts/` directory
+
+### Testing Requirements
+- Write comprehensive tests for ALL contract functions
+- Test both success and failure scenarios
+- Include edge cases and error conditions
+- Maintain >90% test coverage
+- Use Hardhat's testing framework with Waffle/Chai
+
+## 🔄 Development Patterns
+
+### Lazy Minting Implementation
+- Use voucher-based lazy minting with signature verification
+- Include all necessary voucher fields: tokenId, uri, price, recipient, royalty info
+- Validate voucher signatures before minting
+- Track used vouchers to prevent replay
+
+### Payment Distribution
+- Use OpenZeppelin's `PaymentSplitter` for revenue distribution
+- Set up payment shares during contract initialization
+- Implement individual claim mechanism for gas efficiency
+- Never handle payments manually - always use PaymentSplitter
+
+### Royalty Management
+- Implement ERC2981 royalty standard using OpenZeppelin's `ERC721Royalty`
+- Support both default and per-token royalty settings
+- Use basis points (out of 10000) for royalty percentages
+- Ensure royalty rates don't exceed reasonable limits (e.g., 10-20%)
+
+## 🧪 Testing Standards
+
+### Test Structure
+```javascript
+describe("ContractName", function () {
+  describe("Deployment", function () {
+    // Test contract initialization
+  });
+  
+  describe("Core Functionality", function () {
+    // Test main features
+  });
+  
+  describe("Security", function () {
+    // Test access controls and security features
+  });
+  
+  describe("Edge Cases", function () {
+    // Test error conditions and edge cases
+  });
+});
+```
+
+### Required Test Cases
+- Contract deployment and initialization
+- All public/external function calls
+- Access control verification
+- Payment processing and distribution
+- Signature verification (valid and invalid)
+- Error handling and revert conditions
+- Gas optimization validation
+
+## 🚀 Deployment Guidelines
+
+### Environment Configuration
+- Use `.env` files for sensitive configuration
+- Provide fallback values for local testing
+- Support multiple networks (local, Sepolia, Polygon Amoy)
+- Never commit private keys or sensitive data
+
+### Hardhat Configuration
+- Use Hardhat for development, testing, and deployment
+- Configure proper compiler settings for gas optimization
+- Set up network configurations with proper RPC endpoints
+- Include contract verification setup for testnets
+
+## 📝 Code Style
+
+### Solidity Style
+- Follow Solidity style guide conventions
+- Use clear, descriptive variable and function names
+- Add comprehensive NatSpec comments for all public functions
+- Group related functions together
+- Use proper visibility modifiers (external vs public)
+
+### JavaScript/TypeScript Style
+- Use async/await for asynchronous operations
+- Implement proper error handling with try/catch
+- Use descriptive variable names
+- Add JSDoc comments for complex functions
+
+## 🔧 Gas Optimization
+
+### Best Practices
+- Use OpenZeppelin's gas-optimized implementations
+- Minimize storage operations
+- Use events for data that doesn't need on-chain storage
+- Implement batch operations where beneficial
+- Consider using `calldata` instead of `memory` for function parameters
+
+### Avoid Custom Implementations
+- Don't reinvent ERC standards - use OpenZeppelin
+- Don't optimize prematurely - profile first
+- Don't sacrifice security for minor gas savings
+
+## 🔗 Integration Guidelines
+
+### Frontend Integration
+- Use ethers.js or web3.js for contract interactions
+- Implement proper error handling for failed transactions
+- Use TypeScript for type safety
+- Generate TypeChain types from contract ABIs
+
+### Third-party Services
+- Support Thirdweb SDK integration patterns
+- Ensure IPFS compatibility for metadata storage
+- Design for marketplace integration (OpenSea, Rarible, etc.)
+
+## ❌ Prohibited Practices
+
+### Never Do These
+- Don't implement custom ERC standards - use OpenZeppelin
+- Don't skip signature verification for lazy minting
+- Don't handle payments without reentrancy protection
+- Don't deploy without comprehensive testing
+- Don't use deprecated OpenZeppelin patterns
+- Don't commit environment files with sensitive data
+- Don't skip access control on administrative functions
+
+### Deprecated Patterns to Avoid
+```solidity
+// DON'T use old Ownable constructor pattern
+Ownable(msg.sender) // This is deprecated
+
+// DON'T implement custom burn without proper overrides
+function _burn(uint256 tokenId) internal override { } // Missing override specifiers
+```
+
+## 📚 Documentation Requirements
+
+### Code Documentation
+- Add NatSpec comments to all public/external functions
+- Document complex business logic
+- Include usage examples in comments
+- Document security considerations
+
+### README Updates
+- Keep README.md updated with latest features
+- Include clear setup and testing instructions
+- Document all deployment networks and addresses
+- Provide troubleshooting guides for common issues
+
+## 🔄 Version Control
+
+### Commit Standards
+- Write clear, descriptive commit messages
+- Separate contract changes from configuration changes
+- Include test updates with feature changes
+- Tag releases with semantic versioning
+
+### Branch Strategy
+- Use feature branches for new functionality
+- Require tests to pass before merging
+- Review security-critical changes carefully
+- Keep main branch deployable
+
+---
+
+**Remember: Security and reliability are paramount. When in doubt, use the battle-tested OpenZeppelin implementation rather than creating custom solutions.** 

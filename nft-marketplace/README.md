@@ -34,12 +34,12 @@ A comprehensive NFT marketplace implementation featuring lazy minting capabiliti
    npm install
    ```
 
-2. **Environment Configuration**
+2. **Environment Configuration (Optional)**
    ```bash
    cp env.example .env
    ```
    
-   Fill in your environment variables:
+   Fill in your environment variables for testnet deployment:
    ```env
    PRIVATE_KEY=your_private_key_without_0x_prefix
    SEPOLIA_RPC=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
@@ -48,9 +48,16 @@ A comprehensive NFT marketplace implementation featuring lazy minting capabiliti
    POLYGONSCAN_API_KEY=your_polygonscan_api_key
    ```
 
+   **Note**: For local testing, environment variables are optional. The hardhat configuration includes fallback values for testing.
+
 3. **Compile Contracts**
    ```bash
    npm run compile
+   ```
+
+   If you see compilation success message:
+   ```
+   Compiled 30 Solidity files successfully (evm target: paris).
    ```
 
 ## 🧪 Testing
@@ -60,11 +67,14 @@ A comprehensive NFT marketplace implementation featuring lazy minting capabiliti
 # Run all tests
 npm test
 
-# Run tests with coverage
+# Run tests with coverage (if configured)
 npm run test:coverage
 
 # Start local Hardhat node
 npm run node
+
+# Run batch minting demo
+npm run demo-batch:local
 ```
 
 ### Testnet Testing
@@ -81,6 +91,90 @@ npm run deploy:polygon
 # Test lazy minting on Polygon
 npm run test-lazy-mint:polygon
 ```
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. Hardhat Configuration Errors
+**Problem**: `Invalid account: #0 for network: polygon_mumbai - private key too short`
+
+**Solution**: This happens when `PRIVATE_KEY` environment variable is set but invalid. The project includes fallback configuration:
+- For local testing: No environment variables needed
+- For testnet: Ensure `PRIVATE_KEY` is exactly 64 characters (without 0x prefix)
+- Or simply don't set `PRIVATE_KEY` for local testing
+
+#### 2. OpenZeppelin Compatibility Issues
+**Problem**: Compilation errors with `Ownable` constructor or `_burn` override
+
+**Solution**: Already fixed in the contract! The project uses:
+- `_transferOwnership(msg.sender)` instead of `Ownable(msg.sender)`
+- Correct override hierarchy: `override(ERC721URIStorage, ERC721Royalty)`
+
+#### 3. Hardhat Installation Issues
+**Problem**: `Trying to use a non-local installation of Hardhat`
+
+**Solution**: 
+```bash
+# Remove any global Hardhat installation
+npm uninstall -g hardhat
+
+# Install locally
+npm install
+
+# Use npx for commands
+npx hardhat compile
+```
+
+#### 4. Dependency Warnings
+**Expected**: You may see deprecation warnings during `npm install`. These are from underlying dependencies and don't affect functionality:
+```
+npm warn deprecated inflight@1.0.6: This module is not supported
+npm warn deprecated glob@8.1.0: Glob versions prior to v9 are no longer supported
+```
+
+**Solution**: These warnings are expected and don't impact the project. The core functionality remains stable.
+
+### Testing Process
+
+1. **First-time Setup**:
+   ```bash
+   npm install          # Install dependencies
+   npx hardhat compile  # Compile contracts
+   npm test            # Run comprehensive tests
+   ```
+
+2. **Expected Test Output**:
+   ```
+   LazyMintNFT
+     Contract Deployment
+       ✓ Should set the correct owner
+       ✓ Should set the correct authorized signer
+       ✓ Should initialize payment splitter correctly
+       ✓ Should set default royalty correctly
+     
+     Lazy Minting
+       ✓ Should lazy mint NFT with valid voucher
+       ✓ Should set token-specific royalty correctly
+       ✓ Should fail with insufficient payment
+       ✓ Should fail with invalid signature
+       ✓ Should fail when reusing signature
+     
+     Payment Distribution
+       ✓ Should distribute payments correctly through PaymentSplitter
+   ```
+
+3. **End-to-End Testing**:
+   ```bash
+   # Start local node (optional, for manual testing)
+   npx hardhat node
+
+   # Deploy locally
+   npm run deploy:local
+
+   # Test lazy minting functionality
+   npm run test-lazy-mint:local
+   ```
 
 ## 📦 Contract Architecture
 
@@ -234,7 +328,7 @@ await contract.call("lazyMint", [voucher], { value: price });
 The comprehensive test suite covers:
 - ✅ Contract deployment and initialization
 - ✅ Lazy minting with signature verification
-- ✅ Batch minting operations
+- ✅ Batch minting operations (NEW!)
 - ✅ Payment distribution and splitting
 - ✅ Royalty management and ERC2981 compliance
 - ✅ Access control and security features
@@ -255,12 +349,46 @@ LazyMintNFT
     ✓ Should fail with insufficient payment
     ✓ Should fail with invalid signature
     ✓ Should fail when reusing signature
-    ✓ Should fail when token already exists
   
   Payment Distribution
     ✓ Should distribute payments correctly through PaymentSplitter
-    ✓ Should handle direct payments to contract
+  
+  Batch Operations
+    ✓ Should batch mint multiple NFTs successfully
+    ✓ Should distribute payments correctly for batch minting
+    ✓ Should fail batch mint with insufficient payment
+    ✓ Should fail if any signature in batch is invalid
+    ✓ Should fail if any signature in batch is already used
+    ✓ Should handle batch minting with different royalty settings
+    ✓ Should handle empty batch array
+  
+  Royalty Management
+    ✓ Should update default royalty settings
+    ✓ Should only allow owner to mint directly
+  
+  ERC721 Compliance
+    ✓ Should return correct token URI
+    ✓ Should transfer tokens correctly
+
+  21 passing (614ms)
 ```
+
+## 🛠️ Development Notes
+
+### OpenZeppelin Compatibility
+- Uses OpenZeppelin v4.9.6
+- Compatible constructor patterns for `Ownable`
+- Correct override inheritance for multiple inheritance
+
+### Hardhat Configuration
+- Supports local development without environment variables
+- Fallback private keys for testing
+- Multiple network configurations (Sepolia, Polygon Amoy)
+
+### Gas Optimization
+- Efficient batch operations
+- Minimal storage operations
+- Optimized compiler settings
 
 ## 🛣️ Roadmap
 
