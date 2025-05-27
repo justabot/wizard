@@ -1,0 +1,54 @@
+{
+  "name": "nft-marketplace",
+  "version": "1.0.0",
+  "description": "NFT Marketplace with Lazy Minting and Royalty Distribution",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/testnet-deploy.js --network sepolia",
+    "deploy:polygon": "hardhat run scripts/testnet-deploy.js --network polygon_amoy",
+    "deploy-merkle:local": "hardhat run scripts/deploy-merkle.js --network localhost",
+    "deploy-merkle:sepolia": "hardhat run scripts/deploy-merkle.js --network sepolia",
+    "deploy-merkle:polygon": "hardhat run scripts/deploy-merkle.js --network polygon_amoy",
+    "demo-merkle:sepolia": "hardhat run scripts/demo-merkle-distribution.js --network sepolia",
+    "test-lazy-mint:local": "hardhat run scripts/test-lazy-mint.js --network localhost",
+    "test-lazy-mint:sepolia": "hardhat run scripts/test-lazy-mint.js --network sepolia",
+    "test-lazy-mint:polygon": "hardhat run scripts/test-lazy-mint.js --network polygon_amoy",
+    "demo-batch:local": "hardhat run scripts/demo-batch-minting.js --network localhost",
+    "demo-batch:sepolia": "hardhat run scripts/demo-batch-minting.js --network sepolia",
+    "demo-batch:polygon": "npx hardhat run scripts/demo-batch-minting.js --network polygon_amoy",
+    "test:sepolia": "npx hardhat test test/testnet.test.js --network sepolia",
+    "test:polygon": "npx hardhat test test/testnet.test.js --network polygon_amoy",
+    "verify:sepolia": "npx hardhat verify --network sepolia",
+    "verify:polygon": "npx hardhat verify --network polygon_amoy",
+    "clean": "npx hardhat clean"
+  },
+  "keywords": [
+    "nft",
+    "lazy-minting",
+    "royalties",
+    "ethereum",
+    "polygon",
+    "hardhat",
+    "openzeppelin"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.19.0",
+    "merkletreejs": "^0.5.2"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.8",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "chai": "^4.3.10",
+    "ethereum-waffle": "^4.0.10"
+  }
+}
