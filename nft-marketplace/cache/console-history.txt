@@ -1,7 +1,0 @@
-console.log("Contract Address:", contractAddress)
-const contractAddress = "0xe2A26Fd3B34555984807925503443aa3e3198397"
-const contract = LazyMintNFT.attach(contractAddress)
-const LazyMintNFT = await ethers.getContractFactory("LazyMintNFT")
-const contractAddress = "0xe2A26Fd3B34555984807925503443aa3e3198397"
-node -e "require('dotenv').config(); console.log('PRIVATE_KEY length:', process.env.PRIVATE_KEY?.length || 'undefined'); console.log('Will use dummy key:', !(process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length === 64));"
-q
